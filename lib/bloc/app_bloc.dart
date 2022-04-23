@@ -1,4 +1,5 @@
 import 'package:bloc/bloc.dart';
+
 import 'package:testingbloc_course/apis/login_api.dart';
 import 'package:testingbloc_course/apis/notes_api.dart';
 import 'package:testingbloc_course/bloc/app_state.dart';
@@ -9,10 +10,12 @@ import 'actions.dart';
 class AppBloc extends Bloc<AppAction, AppState> {
   final LoginApiProtocol loginApi;
   final NotesApiProtocol notesApi;
+  final LoginHandle acceptedLoginHandle;
 
   AppBloc({
     required this.loginApi,
     required this.notesApi,
+    required this.acceptedLoginHandle,
   }) : super(const AppState.empty()) {
     on<LoginAction>(
       (event, emit) async {
@@ -55,7 +58,7 @@ class AppBloc extends Bloc<AppAction, AppState> {
         // get the login handle
         final LoginHandle? loginHandle = state.loginHandle;
 
-        if (loginHandle != const LoginHandle.fooBar()) {
+        if (loginHandle != acceptedLoginHandle) {
           // invalid login handle, cannot fetch notes
           emit(
             AppState(
@@ -73,9 +76,9 @@ class AppBloc extends Bloc<AppAction, AppState> {
         emit(
           AppState(
             isLoading: false,
-            fetchNotes: notes,
-            loginError: null,
             loginHandle: loginHandle,
+            loginError: null,
+            fetchNotes: notes,
           ),
         );
       },

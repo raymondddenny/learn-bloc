@@ -49,6 +49,7 @@ class MyHomePage extends StatelessWidget {
       create: (context) => AppBloc(
         loginApi: LoginApi(),
         notesApi: NotesApi(),
+        acceptedLoginHandle: const LoginHandle.fooBar(),
       ),
       child: Scaffold(
         appBar: AppBar(
