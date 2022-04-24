@@ -1,59 +1,55 @@
+import 'dart:typed_data' show Uint8List;
+
 import 'package:flutter/foundation.dart' show immutable;
-import 'package:testingbloc_course/models/model.dart';
-import 'package:collection/collection.dart';
 
 @immutable
 class AppState {
   final bool isLoading;
-  final LoginErrors? loginError;
-  final LoginHandle? loginHandle;
-  final Iterable<Note>? fetchNotes;
-
-  const AppState.empty()
-      : isLoading = false,
-        loginError = null,
-        loginHandle = null,
-        fetchNotes = null;
-
+  final Uint8List? imageData;
+  final Object? error;
   const AppState({
     required this.isLoading,
-    this.loginError,
-    this.loginHandle,
-    this.fetchNotes,
+    this.imageData,
+    this.error,
   });
+
+  // empty state
+  const AppState.empty()
+      : isLoading = false,
+        imageData = null,
+        error = null;
 
   @override
   String toString() => {
         'isLoading': isLoading,
-        'loginError': loginError,
-        'loginHandle': loginHandle,
-        'fetchNotes': fetchNotes,
+        'hasData': imageData != null,
+        'error': error,
       }.toString();
 
   @override
-  bool operator ==(covariant AppState other) {
-    final otherPropertiesIsEqual =
-        isLoading == other.isLoading && loginError == other.loginError && loginHandle == other.loginHandle;
-
-    if (fetchNotes == null && other.fetchNotes == null) {
-      return otherPropertiesIsEqual;
-    } else {
-      return otherPropertiesIsEqual && (fetchNotes?.isEqualTo(other.fetchNotes) ?? false);
-    }
-  }
+  bool operator ==(covariant AppState other) =>
+      isLoading == other.isLoading && (imageData ?? []).isEqualTo(other.imageData ?? []) && error == other.error;
 
   @override
-  int get hashCode => Object.hash(
-        isLoading,
-        loginError,
-        loginHandle,
-        fetchNotes,
-      );
+  int get hashCode => Object.hash(isLoading, imageData, error);
 }
 
-extension UnOrderedEquality on Object {
-  bool isEqualTo(other) => const DeepCollectionEquality.unordered().equals(
-        this,
-        other,
-      );
+extension Comparison<E> on List<E> {
+  bool isEqualTo(List<E> other) {
+    if (identical(this, other)) {
+      return true;
+    }
+
+    if (length != other.length) {
+      return false;
+    }
+
+    for (var i = 0; i < length; i++) {
+      if (this[i] != other[i]) {
+        return false;
+      }
+    }
+
+    return true;
+  }
 }

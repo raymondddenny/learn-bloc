@@ -1,204 +1,115 @@
+import 'dart:typed_data';
+
 import 'package:bloc_test/bloc_test.dart';
-import 'package:flutter/foundation.dart' show immutable;
 import 'package:flutter_test/flutter_test.dart';
-
-import 'package:testingbloc_course/apis/login_api.dart';
-import 'package:testingbloc_course/apis/notes_api.dart';
-import 'package:testingbloc_course/bloc/actions.dart';
 import 'package:testingbloc_course/bloc/app_bloc.dart';
+import 'package:testingbloc_course/bloc/app_event.dart';
 import 'package:testingbloc_course/bloc/app_state.dart';
-import 'package:testingbloc_course/models/model.dart';
 
-// mocked notes
-const Iterable<Note> mockNotesTest = [
-  Note(title: 'Note 1'),
-  Note(title: 'Note 2'),
-  Note(title: 'Note 3'),
-];
-
-@immutable
-class DummyNotesApi implements NotesApiProtocol {
-  final LoginHandle acceptedLoginHandle;
-  final Iterable<Note>? notesToReturnForAcceptedLoginHandle;
-
-  const DummyNotesApi({
-    required this.acceptedLoginHandle,
-    required this.notesToReturnForAcceptedLoginHandle,
-  });
-
-  @override
-  Future<Iterable<Note>?> getNotes({
-    required LoginHandle loginHandle,
-  }) async {
-    if (loginHandle == acceptedLoginHandle) {
-      return notesToReturnForAcceptedLoginHandle;
-    } else {
-      return null;
-    }
-  }
-
-  const DummyNotesApi.empty()
-      : acceptedLoginHandle = const LoginHandle.fooBar(),
-        notesToReturnForAcceptedLoginHandle = null;
+extension ToList on String {
+  Uint8List toUint8List() => Uint8List.fromList(codeUnits);
 }
 
-@immutable
-class DummyLoginApi implements LoginApiProtocol {
-  final String acceptedEmail;
-  final String acceptedPassword;
-  final LoginHandle loginHandleToReturn;
-  const DummyLoginApi({
-    required this.acceptedEmail,
-    required this.acceptedPassword,
-    required this.loginHandleToReturn,
-  });
-
-  const DummyLoginApi.empty()
-      : acceptedEmail = '',
-        acceptedPassword = '',
-        loginHandleToReturn = const LoginHandle.fooBar();
-
-  @override
-  Future<LoginHandle?> login({
-    required String email,
-    required String password,
-  }) async {
-    if (email == acceptedEmail && password == acceptedPassword) {
-      return loginHandleToReturn;
-    } else {
-      return null;
-    }
-  }
-}
-
-const acceptedLoginHandle = LoginHandle(token: 'ABC');
+final text1Data = 'Foo'.toUint8List();
+final text2Data = 'Bar'.toUint8List();
+enum Errors { dummy }
 
 void main() {
   blocTest<AppBloc, AppState>(
-    'initial bloc state should state should be AppState.emoty',
+    'initial state must be empty',
     build: () => AppBloc(
-      loginApi: const DummyLoginApi.empty(),
-      notesApi: const DummyNotesApi.empty(),
-      acceptedLoginHandle: const LoginHandle.fooBar(),
+      urls: [],
     ),
-    verify: (appState) => expect(
-      appState.state,
+    verify: (appBloc) => expect(
+      appBloc.state,
       const AppState.empty(),
     ),
   );
 
+  // 'Load valid data and compare state',
   blocTest<AppBloc, AppState>(
-    'Login with correct credential',
+    'test to load a URL',
     build: () => AppBloc(
-      loginApi: const DummyLoginApi(
-        acceptedEmail: 'tes@baz.com',
-        acceptedPassword: 'foo',
-        loginHandleToReturn: acceptedLoginHandle,
-      ),
-      notesApi: const DummyNotesApi.empty(),
-      acceptedLoginHandle: acceptedLoginHandle,
+      urls: [],
+      urlPicker: (_) => '',
+      urlLoader: (_) => Future.value(text1Data),
     ),
     act: (appBloc) => appBloc.add(
-      const LoginAction(
-        email: 'tes@baz.com',
-        password: 'foo',
-      ),
+      const LoadNextImageUrl(),
     ),
     expect: () => [
       const AppState(
         isLoading: true,
-        loginError: null,
-        loginHandle: null,
-        fetchNotes: null,
+        imageData: null,
+        error: null,
       ),
-      const AppState(
+      AppState(
         isLoading: false,
-        loginHandle: acceptedLoginHandle,
-        loginError: null,
-        fetchNotes: null,
-      ),
+        imageData: text1Data,
+        error: null,
+      )
     ],
   );
   blocTest<AppBloc, AppState>(
-    'Login with incorrect credential',
+    'test throw an error in url loader and catch it',
     build: () => AppBloc(
-      loginApi: const DummyLoginApi(
-        acceptedEmail: 'foo@bar.com',
-        acceptedPassword: 'baz',
-        loginHandleToReturn: acceptedLoginHandle,
-      ),
-      notesApi: const DummyNotesApi.empty(),
-      acceptedLoginHandle: acceptedLoginHandle,
+      urls: [],
+      urlPicker: (_) => '',
+      urlLoader: (_) => Future.error(Errors.dummy),
     ),
     act: (appBloc) => appBloc.add(
-      const LoginAction(
-        email: 'tes@baz.com',
-        password: 'foo',
-      ),
+      const LoadNextImageUrl(),
     ),
     expect: () => [
       const AppState(
         isLoading: true,
-        loginError: null,
-        loginHandle: null,
-        fetchNotes: null,
+        imageData: null,
+        error: null,
       ),
       const AppState(
         isLoading: false,
-        loginHandle: null,
-        loginError: LoginErrors.invalidHandle,
-        fetchNotes: null,
-      ),
+        imageData: null,
+        error: Errors.dummy,
+      )
     ],
   );
 
   blocTest<AppBloc, AppState>(
-    'Login with correct credential and load notes',
+    'test loading two url images',
     build: () => AppBloc(
-      loginApi: const DummyLoginApi(
-        acceptedEmail: 'foo@bar.com',
-        acceptedPassword: 'baz',
-        loginHandleToReturn: acceptedLoginHandle,
-      ),
-      notesApi: const DummyNotesApi.empty(),
-      acceptedLoginHandle: acceptedLoginHandle,
+      urls: [],
+      urlPicker: (_) => '',
+      urlLoader: (_) => Future.value(text2Data),
     ),
     act: (appBloc) {
       appBloc.add(
-        const LoginAction(
-          email: 'foo@bar.com',
-          password: 'baz',
-        ),
+        const LoadNextImageUrl(),
       );
       appBloc.add(
-        const LoadingNotesAction(),
+        const LoadNextImageUrl(),
       );
     },
     expect: () => [
       const AppState(
         isLoading: true,
-        loginError: null,
-        loginHandle: null,
-        fetchNotes: null,
+        imageData: null,
+        error: null,
       ),
-      const AppState(
+      AppState(
         isLoading: false,
-        loginHandle: acceptedLoginHandle,
-        loginError: null,
-        fetchNotes: null,
+        imageData: text2Data,
+        error: null,
       ),
       const AppState(
         isLoading: true,
-        loginHandle: acceptedLoginHandle,
-        loginError: null,
-        fetchNotes: null,
+        imageData: null,
+        error: null,
       ),
-      const AppState(
+      AppState(
         isLoading: false,
-        loginHandle: acceptedLoginHandle,
-        loginError: null,
-        fetchNotes: null,
-      ),
+        imageData: text2Data,
+        error: null,
+      )
     ],
   );
 }
